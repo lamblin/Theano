@@ -301,6 +301,15 @@ def get_c_extract(r, name, sub):
     return pre + r.type.c_extract(name, sub)
 
 
+def get_c_extract_out(r, name, sub):
+    """WRITEME"""
+    pre = """
+    py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
+    {Py_XINCREF(py_%(name)s);}
+    """ % locals()
+    return pre + r.type.c_extract_out(name, sub)
+
+
 def get_c_cleanup(r, name, sub):
     """WRITEME"""
     post = """
@@ -514,6 +523,7 @@ class CLinker(link.Linker):
                     policy = [[get_c_declare, get_c_init, get_c_cleanup],
                               [get_nothing, get_nothing, get_nothing]]
             elif variable in self.outputs:
+                """
                 # outputs don't need to be extracted from Python, so
                 # we call c_init rather than c_extract
                 if variable.type.c_is_simple() or variable in no_recycling:
@@ -526,6 +536,22 @@ class CLinker(link.Linker):
                     # destructor
                     policy = [[get_c_declare, get_c_init, get_c_cleanup],
                               [get_nothing, get_nothing, get_c_sync]]
+                """
+                if variable.type.c_is_simple() or variable in no_recycling:
+                    # Do not extract output for Python, it's not worth it
+                    policy = [[get_nothing, get_nothing, get_nothing],
+                              [get_c_declare, get_c_init,
+                                  (get_c_sync, get_c_cleanup)]]
+                else:
+                    # We try to use the output that is pre-allocated.
+                    # The linker will usually just reuse the storage
+                    # from last run, but in the first execution,
+                    # it will be None.
+                    # We clean-up at each run to enable garbage collection
+                    # in the Linker.
+                    policy = [[get_nothing, get_nothing, get_nothing],
+                              [get_c_declare, get_c_extract_out,
+                                  (get_c_sync, get_c_cleanup)]]
             else:
                 raise Exception("what the fuck")
 

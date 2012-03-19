@@ -319,6 +319,76 @@ class CudaNdarrayType(Type):
             assert(%(name)s);
             Py_INCREF(py_%(name)s);
         }
+        else if (py_%(name)s == Py_None)
+        {
+            PyErr_SetString(PyExc_TypeError,
+                            "expected a CudaNdarray, not None");
+            %(name)s = NULL;
+            %(fail)s;
+        }
+        else
+        {
+            //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
+            PyErr_SetString(PyExc_TypeError, "Argument not a CudaNdarray");
+            %(name)s = NULL;
+            %(fail)s;
+        }
+        //std::cerr << "c_extract done " << %(name)s << '\\n';
+        """ % locals()
+        #print sio.getvalue()
+        return sio.getvalue()
+
+    def c_extract_out(self, name, sub):
+        sio = StringIO.StringIO()
+        fail = sub['fail']
+        nd = self.ndim
+        print >> sio, """
+        assert(py_%(name)s->ob_refcnt >= 2); // There should be at least one ref from the container object,
+        // and one ref from the local scope.
+
+        if (CudaNdarray_Check(py_%(name)s))
+        {
+            //fprintf(stderr, "c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
+            %(name)s = (CudaNdarray*)py_%(name)s;
+            //std::cerr << "c_extract " << %(name)s << '\\n';
+            if (%(name)s->nd != %(nd)s)
+            {
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s", %(name)s->nd);
+                %(name)s = NULL;
+                %(fail)s;
+            }
+            //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
+        """ % locals()
+        for i, b in enumerate(self.broadcastable):
+            if b:
+                print >> sio, """
+            if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
+            {
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has dim %%i on broadcastable dimension %%i", CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
+                %(name)s = NULL;
+                %(fail)s;
+            }
+            //std::cerr << "c_extract " << %(name)s << "dim check %(i)s passed\\n";
+            //std::cerr << "c_extract " << %(name)s << "checking bcast %(i)s <" << %(name)s->str<< ">\\n";
+            //std::cerr << "c_extract " << %(name)s->str[%(i)s] << "\\n";
+            if (CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s])
+            {
+                //std::cerr << "c_extract bad stride detected...\\n";
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i", CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
+                %(name)s = NULL;
+                %(fail)s;
+            }
+            //std::cerr << "c_extract " << %(name)s << "bcast check %(i)s passed\\n";
+                """ % locals()
+        print >> sio, """
+            assert(%(name)s);
+            Py_INCREF(py_%(name)s);
+        }
+        else if (py_%(name)s == Py_None)
+        {
+            // The Op should be able to deal with NULL in its outputs.
+            %(name)s = NULL;
+        }
         else
         {
             //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));

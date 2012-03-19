@@ -241,6 +241,29 @@ class Scalar(Type):
                    dtype=specs[1],
                    pyarr_type='Py%sArrType_Type' % specs[2])
 
+    def c_extract_out(self, name, sub):
+        specs = self.dtype_specs()
+        return """
+        if (py_%(name)s == Py_None)
+        {
+            // just initialize
+            %(name)s = 0;
+        }
+        else
+        {
+            if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
+            {
+                PyErr_Format(PyExc_ValueError,
+                    "Scalar check failed (%(dtype)s)");
+                %(fail)s
+            }
+            PyArray_ScalarAsCtype(py_%(name)s, &%(name)s);
+        }
+        """ % dict(sub,
+                   name=name,
+                   dtype=specs[1],
+                   pyarr_type='Py%sArrType_Type' % specs[2])
+
     def c_sync(self, name, sub):
         specs = self.dtype_specs()
         return """

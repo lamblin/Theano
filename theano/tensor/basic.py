@@ -981,6 +981,36 @@ class TensorType(Type):
         Py_XINCREF(%(name)s);
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
+    def c_extract_out(self, name, sub):
+        """WRITEME"""
+        return """
+        %(name)s = NULL;
+        if (py_%(name)s == Py_None) {
+            // The Op has to handle the NULL case for its outputs already, so
+            // we can simply have %(name)s be NULL.
+        }
+        else
+        {
+            if (!PyArray_Check(py_%(name)s)) {
+                PyErr_SetString(PyExc_ValueError, "expected an ndarray");
+                %(fail)s
+            }
+            type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
+            if (!PyArray_ISALIGNED(py_%(name)s)) {
+                PyErr_Format(PyExc_NotImplementedError,
+                             "expected an aligned array of type %%d (%(type_num)s), got non-aligned array of type %%d",
+                             %(type_num)s, type_num_%(name)s);
+                %(fail)s
+            }
+            if (type_num_%(name)s != %(type_num)s) {
+                PyErr_Format(PyExc_ValueError, "expected type_num %%d (%(type_num)s) got %%d", %(type_num)s, type_num_%(name)s);
+                %(fail)s
+            }
+            %(name)s = (PyArrayObject*)(py_%(name)s);
+            Py_XINCREF(%(name)s);
+        }
+        """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
+
     def c_cleanup(self, name, sub):
         """Override `CLinkerOp.c_cleanup` """
         return """

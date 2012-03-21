@@ -987,10 +987,12 @@ class CLinker(link.Linker):
         be re-used by the computation (the elements of
         self.no_recycling) can affect the code that is generated.
 
-        The format of each Op's output signature is simply a list of
+        The format of each Op's output signature is a (version, no_recycle)
+        pair, where version is incremented if codegen() changes how it
+        handles the outputs, and no_recycle is simply a list of
         booleans, indicating whether each output is in the
-        no_recycling set.
-
+        no_recycling set. Older versions of compiled modules only have the
+        no_recycle list.
         """
         return self.cmodule_key_(self.env, self.no_recycling,
                           compile_args=self.compile_args(),
@@ -1112,7 +1114,8 @@ class CLinker(link.Linker):
                 node.op,
                 tuple((i.type, in_sig(i, node_pos, ipos))
                     for ipos, i in enumerate(node.inputs)),
-                tuple(o in no_recycling for o in node.outputs)))
+                (1,  # Increment if cmodule change its handling of outputs
+                    tuple(o in no_recycling for o in node.outputs))))
 
             if error_on_play[0]:
                 # if one of the signatures is not hashable

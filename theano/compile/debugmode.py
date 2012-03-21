@@ -61,6 +61,16 @@ AddConfigVar('DebugMode.warn_input_not_reused',
         in_c_key=False)
 
 
+import atexit
+toto_dimensions = {}
+
+
+@atexit.register
+def __toto_atexit():
+    l = logging.getLogger("theano.compile.debugmode.toto")
+    l.warn('dimension count:\n' '%s', toto_dimensions)
+
+
 def is_valid_check_preallocated_output_param(param):
     if not isinstance(param, basestring):
         return False
@@ -1070,6 +1080,17 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     for r in node.outputs:
         if isinstance(r.type, (TensorType, CudaNdarrayType)):
             max_ndim = max(max_ndim, r.ndim)
+
+    out_broadcast_pattern = [True] * max_ndim
+    for r in node.outputs:
+        if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            for i, b in enumerate(r.broadcastable):
+                out_broadcast_pattern[i] = out_broadcast_pattern[i] and b
+
+    max_real_ndim = len([1 for b in out_broadcast_pattern if not b])
+
+    k = toto_dimensions.get((max_ndim, max_real_ndim), 0)
+    toto_dimensions[(max_ndim, max_real_ndim)] = k + 1
 
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
         # Initial allocation

@@ -338,7 +338,7 @@ class CudaNdarrayType(Type):
         #print sio.getvalue()
         return sio.getvalue()
 
-    def c_extract_out(self, name, sub):
+    def c_extract_out_(self, name, sub):
         sio = StringIO.StringIO()
         fail = sub['fail']
         nd = self.ndim

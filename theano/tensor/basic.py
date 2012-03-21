@@ -981,7 +981,7 @@ class TensorType(Type):
         Py_XINCREF(%(name)s);
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
-    def c_extract_out(self, name, sub):
+    def c_extract_out_(self, name, sub):
         """WRITEME"""
         return """
         %(name)s = NULL;

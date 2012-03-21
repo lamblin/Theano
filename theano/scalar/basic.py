@@ -241,7 +241,7 @@ class Scalar(Type):
                    dtype=specs[1],
                    pyarr_type='Py%sArrType_Type' % specs[2])
 
-    def c_extract_out(self, name, sub):
+    def c_extract_out_(self, name, sub):
         specs = self.dtype_specs()
         return """
         if (py_%(name)s == Py_None)

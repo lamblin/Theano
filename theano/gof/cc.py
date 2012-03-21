@@ -538,7 +538,7 @@ class CLinker(link.Linker):
                               [get_nothing, get_nothing, get_c_sync]]
                 """
                 if variable.type.c_is_simple() or variable in no_recycling:
-                    # Do not extract output for Python, it's not worth it
+                    # Do not extract output from Python, it's not worth it
                     policy = [[get_nothing, get_nothing, get_nothing],
                               [get_c_declare, get_c_init,
                                   (get_c_sync, get_c_cleanup)]]

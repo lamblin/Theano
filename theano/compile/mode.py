@@ -91,6 +91,11 @@ predefined_linkers = {
         linker_class_2=(
             lambda schedule=None:
                 gof.vm.VM_Linker(use_cloop=True, schedule=schedule))),
+    'c&vm': gof.DualLinker(checker=check_equal,
+        linker_class_1=gof.OpWiseCLinker,
+        linker_class_2=(
+            lambda schedule=None:
+                gof.vm.VM_Linker(use_cloop=False, schedule=schedule))),
     'vm': gof.vm.VM_Linker(use_cloop=False),
     'cvm': gof.vm.VM_Linker(use_cloop=True),
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),

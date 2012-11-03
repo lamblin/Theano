@@ -3,7 +3,7 @@ Defines Linkers that deal with C implementations.
 """
 
 # Python imports
-from copy import copy
+from copy import copy, deepcopy
 import re  # for set_compiledir
 import os
 import StringIO
@@ -1527,7 +1527,9 @@ class DualLinker(link.Linker):
     function.
     """
 
-    def __init__(self, checker=_default_checker, schedule=None):
+    def __init__(self, checker=_default_checker,
+            linker_class_1=link.PerformLinker, linker_class_2=OpWiseCLinker,
+            schedule=None):
         """
         Initialize a DualLinker.
 
@@ -1552,6 +1554,8 @@ class DualLinker(link.Linker):
         """
         self.fgraph = None
         self.checker = checker
+        self.linker1 = linker_class_1
+        self.linker2 = linker_class_2
         if schedule:
             self.schedule = schedule
 
@@ -1559,7 +1563,11 @@ class DualLinker(link.Linker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)(self.checker).accept(fgraph, no_recycling)
+            return type(self)(
+                    checker=self.checker,
+                    linker_class_1=self.linker1,
+                    linker_class_2=self.linker2
+                    ).accept(fgraph, no_recycling)
             # raise Exception("Cannot accept from a Linker that is already "
             #                 "tied to another FunctionGraph.")
         self.fgraph = fgraph
@@ -1571,20 +1579,20 @@ class DualLinker(link.Linker):
         fgraph = self.fgraph
         no_recycling = self.no_recycling
 
-        _f, i1, o1, thunks1, order1 = (
-                link.PerformLinker(schedule=self.schedule).accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs))
+        _f, i1, o1, thunks1, order1 = self.linker1(schedule=self.schedule
+                ).accept(fgraph, no_recycling=no_recycling).make_all(**kwargs)
         kwargs.pop('input_storage', None)
-        _f, i2, o2, thunks2, order2 = (
-                OpWiseCLinker(schedule=self.schedule).accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs))
+        _f, i2, o2, thunks2, order2 = self.linker2(schedule=self.schedule
+                ).accept(fgraph, no_recycling=no_recycling).make_all(**kwargs)
 
         def f():
             for input1, input2 in izip(i1, i2):
                 # Set the inputs to be the same in both branches.
                 # The copy is necessary in order for inplace ops not to
                 # interfere.
-                input2.storage[0] = copy(input1.storage[0])
+                input2.storage[0] = theano.compile.debugmode._lessbroken_deepcopy(input1.storage[0])
+                assert not theano.compile.debugmode._may_share_memory(input2.storage[0], input1.storage[0])
+                assert type(input2.storage[0]) == type(input1.storage[0])
             for thunk1, thunk2, node1, node2 in izip(thunks1, thunks2,
                                                      order1, order2):
                 for output, storage in izip(node1.outputs, thunk1.outputs):
@@ -1599,7 +1607,9 @@ class DualLinker(link.Linker):
                     for output1, output2 in izip(thunk1.outputs,
                                                  thunk2.outputs):
                         self.checker(output1, output2)
-                except Exception:
+                except Exception, e:
+                    #if isinstance(e, theano.compile.mode.TotoException):
+                    #    import pdb; pdb.set_trace()
                     link.raise_with_op(node1)
 
         return f, i1, o1

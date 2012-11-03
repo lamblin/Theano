@@ -32,6 +32,9 @@ AddConfigVar('optimizer_requiring',
         in_c_key=False)
 
 
+class TotoException(Exception):
+    pass
+
 def check_equal(x, y):
     """
     Returns True iff x[0] and y[0] are equal (checks the dtype and
@@ -48,15 +51,29 @@ def check_equal(x, y):
     if sp.issparse(y):
         y = y.todense()
 
+    import theano.sandbox.cuda as cuda
+    if cuda.cuda_available:
+        if isinstance(x, cuda.CudaNdarray):
+            x = numpy.asarray(x)
+        if isinstance(y, cuda.CudaNdarray):
+            y = numpy.asarray(y)
+
     if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
         if (x.dtype != y.dtype
                 or x.shape != y.shape
-                or numpy.any(abs(x - y) > 1e-10)):
-            raise Exception("Output mismatch.",
+                or not numpy.allclose(x, y)):
+                #or numpy.any(abs(x - y) > 1e-10)):
+            #import pdb; pdb.set_trace()
+            raise TotoException("Output mismatch.",
+                    {'performlinker': x, 'clinker': y})
+    elif isinstance(x, numpy.random.RandomState) and isinstance(y, numpy.random.RandomState):
+        if not theano.tensor.raw_random.RandomStateType().values_eq_approx(x, y):
+            raise TotoException("Output mismatch.",
                     {'performlinker': x, 'clinker': y})
     else:
         if x != y:
-            raise Exception("Output mismatch.",
+            #import pdb; pdb.set_trace()
+            raise TotoException("Output mismatch.",
                     {'performlinker': x, 'clinker': y})
 
 
@@ -69,6 +86,11 @@ predefined_linkers = {
     'c|py': gof.OpWiseCLinker(),
     'c|py_nogc': gof.OpWiseCLinker(allow_gc=False),
     'c&py': gof.DualLinker(checker=check_equal),
+    'c&cvm': gof.DualLinker(checker=check_equal,
+        linker_class_1=gof.OpWiseCLinker,
+        linker_class_2=(
+            lambda schedule=None:
+                gof.vm.VM_Linker(use_cloop=True, schedule=schedule))),
     'vm': gof.vm.VM_Linker(use_cloop=False),
     'cvm': gof.vm.VM_Linker(use_cloop=True),
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),

@@ -5584,20 +5584,50 @@ class Reshape(Op):
     known at graph build time."""
     view_map = {0: [0]}  # output 0 is potentially aliased to inputs [0]
 
-    def __init__(self, ndim, name=None):
+    def __init__(self, ndim=None, bcast=None, name=None):
         self.ndim = ndim
+        if ndim is None:
+            if bcast is None:
+                raise ValueError('At least ndim or bcast should be provided')
+            self.ndim = len(bcast)
+
+        self.bcast = bcast
+        if bcast is None:
+            self.bcast = [False] * self.ndim
+
         self.name = name
 
     def __eq__(self, other):
         # .name does not participate because it doesn't affect computations
-        return (type(other) is type(self)) and (other.ndim == self.ndim)
+        return ((type(other) is type(self))
+                and (other.ndim == self.ndim)
+                and (other.bcast == self.bcast))
 
     def __hash__(self):
         # .name does not participate because it doesn't affect computations
-        return hash(type(self)) ^ hash(self.ndim)
+        return hash(type(self)) ^ hash(self.ndim) ^ hash(tuple(self.bcast))
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.ndim)
+
+    @staticmethod
+    def _compute_broadcastable(ndim, shp):
+        bcasts = [False] * ndim
+        shp_list = shp
+        if hasattr(shp, 'ndim') and shp.ndim == 0:
+            shp_list = [shp]
+        for index in xrange(ndim):
+            y = shp_list[index]
+            y = as_tensor_variable(y)
+            # Try to see if we can infer that y has a constant value of 1.
+            # If so, that dimension should be broadcastable.
+            try:
+                bcasts[index] = (hasattr(y, 'get_constant_value') and
+                                 y.get_constant_value() == 1)
+            except TypeError:
+                pass
+
+        return bcasts
 
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
@@ -5608,23 +5638,17 @@ class Reshape(Op):
         assert shp.ndim == 1
         if isinstance(shp, TensorConstant):
             bcast = [s == 1 for s in shp.data]
-            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcast)])
         else:
-            bcasts = [False] * self.ndim
-            shp_list = shp_orig
-            if hasattr(shp_orig, "ndim") and shp_orig.ndim == 0:
-                shp_list = [shp_orig]
-            for index in xrange(self.ndim):
-                y = shp_list[index]
-                y = as_tensor_variable(y)
-                # Try to see if we can infer that y has a constant value of 1.
-                # If so, that dimension should be broadcastable.
-                try:
-                    bcasts[index] = (hasattr(y, 'get_constant_value') and
-                                     y.get_constant_value() == 1)
-                except TypeError:
-                    pass
-            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcasts)])
+            bcast = self._compute_broadcastable(self.ndim, shp_orig)
+
+        # Instantiate a new op if broadcastable pattern has changed
+        if bcast == self.bcast:
+            new_op = self
+        else:
+            new_op = self.__class__(
+                    ndim=self.ndim, bcast=bcast, name=self.name)
+
+        return gof.Apply(new_op, [x, shp], [tensor(x.type.dtype, bcast)])
 
     def perform(self, node, inp, out_):
         x, shp = inp
@@ -5744,7 +5768,8 @@ class Reshape(Op):
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
         ndim = get_vector_length(newshape)
-    op = Reshape(ndim, name)
+    bcast = Reshape._compute_broadcastable(ndim, newshape)
+    op = Reshape(ndim, bcast=bcast, name=name)
     rval = op(x, newshape)
     return rval
 

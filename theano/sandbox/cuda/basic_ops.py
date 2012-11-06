@@ -2159,10 +2159,18 @@ class GpuReshape(tensor.Reshape, GpuOp):
     """
     Implement Reshape on the gpu.
     """
-    # __hash__, __eq__, __str__ come from tensor.Subtensor
+    # __hash__, __eq__, __str__ come from tensor.Reshape
     def make_node(self, x, shp):
         host_reshaped = host_from_gpu(x).reshape(shp, ndim=self.ndim)
-        return Apply(self, [x, shp],
+        bcast = host_reshaped.broadcastable
+
+        if bcast == self.bcast:
+            new_op = self
+        else:
+            new_op = self.__class__(
+                    ndim=self.ndim, bcast=bcast, name=self.name)
+
+        return Apply(new_op, [x, shp],
                      [CudaNdarrayType(host_reshaped.broadcastable)()])
 
     def perform(self, node, inp, out_):

@@ -748,6 +748,7 @@ class GpuDownsampleFactorMax(GpuOp):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
+        return ()
         return (6)
 
     def c_code(self, node, nodename, inp, out, sub):
@@ -862,15 +863,22 @@ class GpuDownsampleFactorMax(GpuOp):
 
                 extern __shared__ float xbuf[]; //size [xD3]
 
+                //printf("tx=%%d, xD3=%%d, blockDim.x=%%d, tx*pf3=%%d\\n", tx, xD3, blockDim.x, tx*pf3);
+                //printf("xD2=%%d, i2*pf2=%%d\\n", xD2, i2*pf2);
                 for (int r2 = 0;
                      (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
                      ++r2)
                 {
+                    if (i2*pf2 == 9)
+                        printf("i0=%%d, i1=%%d, i2=%%d, r2=%%d, tx=%%d, xD3=%%d, blockDim.x=%%d, tx*pf3=%%d\\n",
+                               i0, i1, i2, r2, tx, xD3, blockDim.x, tx*pf3);
                     __syncthreads();
                     // load the current row of the image into shared memory
                     for (int j = tx; j < xD3; j += blockDim.x)
                     {
                         xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
+                        if (i2*pf2 == 9)
+                            printf("xbuf[%%d] = %%f, ", j, xbuf[j]);
                     }
                     __syncthreads();
 
@@ -901,7 +909,8 @@ class GpuDownsampleFactorMax(GpuOp):
                         }
                     }
                 }
-
+                if (i2*pf2 == 9)
+                    printf("cur_max = %%f\\n", cur_max);
                 z[i0*zS0 + i1*zS1 + i2*zS2 + tx*zS3] = cur_max;
             }
         }

@@ -225,40 +225,42 @@ if 0:
 
 
 def test_downsample():
-    shps = [(1, 1, 1, 12),
-            (1, 1, 2, 2),
-            (1, 1, 1, 1),
-            (1, 1, 4, 4),
+    shps = [#(1, 1, 1, 12),
+            #(1, 1, 2, 2),
+            #(1, 1, 1, 1),
+            #(1, 1, 4, 4),
+            #(1, 1, 10, 11),
+            #(1, 2, 2, 2),
+            #(3, 5, 4, 4),
+            #(25, 1, 7, 7),
+            #(1, 1, 12, 12),
+            #(1, 1, 2, 14),
+            #(1, 1, 12, 14),
+            #(1, 1, 14, 14),
+            #(1, 1, 16, 16),
+            #(1, 1, 18, 18),
+            #(1, 1, 24, 24),
+            #(1, 6, 24, 24),
+            #(10, 1, 24, 24),
+            #(10, 6, 24, 24),
+            #(30, 6, 12, 12),
+            #(30, 2, 24, 24),
+            #(30, 6, 24, 24),
+            ##(10, 10, 10, 11),
             (1, 1, 10, 11),
-            (1, 2, 2, 2),
-            (3, 5, 4, 4),
-            (25, 1, 7, 7),
-            (1, 1, 12, 12),
-            (1, 1, 2, 14),
-            (1, 1, 12, 14),
-            (1, 1, 14, 14),
-            (1, 1, 16, 16),
-            (1, 1, 18, 18),
-            (1, 1, 24, 24),
-            (1, 6, 24, 24),
-            (10, 1, 24, 24),
-            (10, 6, 24, 24),
-            (30, 6, 12, 12),
-            (30, 2, 24, 24),
-            (30, 6, 24, 24),
-            (10, 10, 10, 11),
-            (1, 1, 10, 1025),
-            (1, 1, 10, 1023),
-            (1, 1, 1025, 10),
-            (1, 1, 1023, 10),
-            (65536, 1, 10, 10),
-            (1, 65536, 10, 10),
+            #(1, 1, 10, 1025),
+            #(1, 1, 10, 1023),
+            #(1, 1, 1025, 10),
+            #(1, 1, 1023, 10),
+            #(65536, 1, 10, 10),
+            #(1, 65536, 10, 10),
              ]
 
     numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
 
     for shp in shps:
-        for ds in (2, 2), (3, 2), (1, 1):
+        #for ds in (2, 2), (3, 2), (1, 1):
+        for ds in (3, 2),:
             if ds[0] > shp[2]:
                 continue
             if ds[1] > shp[3]:
@@ -267,11 +269,13 @@ def test_downsample():
             # in the output tensor.
             if float(shp[3]) / ds[1] > 512:
                 continue
-            for ignore_border in (True, False):
+            #for ignore_border in (True, False):
+            for ignore_border in False,:
                 #print 'test_downsample', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
+                print 'testing f'
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a)),
                         mode=mode_with_gpu)
                 f2 = pfunc([], ds_op(tensor.as_tensor_variable(a)),
@@ -291,6 +295,7 @@ def test_downsample():
                 if shp[0] > 30000 or shp[1] > 30000:
                     continue
 
+                print 'testing g'
                 g = pfunc(
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),

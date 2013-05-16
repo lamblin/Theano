@@ -89,6 +89,27 @@ class Scan(PureOp):
         if typeConstructor is None:
             typeConstructor = tensorConstructor
 
+        def format(var, as_type):
+            """
+            Return an equivalent to `var` with the same dtype and type class
+            (TensorType or CudaNdarrayType) as `as_type`. It internally deals with
+            the case where as_type.ndim == var.ndim + 1.
+            """
+            if not hasattr(var, 'dtype'):
+                return var
+            rval = var
+            if rval.type.dtype != as_type.dtype:
+                rval = rval.astype(as_type.dtype)
+            if rval.ndim == as_type.ndim:
+                rval = as_type.filter_variable(rval)
+            else:
+                assert rval.ndim + 1 == as_type.ndim
+                tmp = as_type.__class__(
+                        broadcastable=as_type.broadcastable[1:],
+                        dtype=as_type.dtype)
+                rval = tmp.filter_variable(rval)
+            return rval
+
         while idx < self.n_mit_mot_outs:
             # Not that for mit_mot there are several output slices per
             # output sequence
@@ -100,16 +121,22 @@ class Scan(PureOp):
             # type constructor ``typeConstructor``. For anything else we
             # know that even if we run it on the GPU we still construct
             # normal Theano tensors.
+            # We also have to make sure all the corresponding outputs in
+            # self.outputs[idx] are converted to the appropriate output type.
             if o.type.dtype in ['float32']:
-                self.output_types.append(
-                    typeConstructor(
+                o_type = typeConstructor(
                         broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
+                        dtype=o.type.dtype)
             else:
-                self.output_types.append(
-                    tensorConstructor(
+                o_type = tensorConstructor(
                         broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
+                        dtype=o.type.dtype)
+
+            self.output_types.append(o_type)
+
+            for j in range(len(self.mit_mot_out_slices[jdx])):
+                self.outputs[idx + j] = format(outputs[idx + j],
+                                               as_type=o_type)
 
             idx += len(self.mit_mot_out_slices[jdx])
             jdx += 1
@@ -117,7 +144,7 @@ class Scan(PureOp):
         # mit_sot / sit_sot / nit_sot
         end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
 
-        for o in outputs[idx:end]:
+        for j, o in enumerate(outputs[idx:end]):
             # Scan assumes that only variables of dtype float32 might need a
             # special constructor (i.e. CudaNdarray constructor) when the
             # code is running on GPU, as it is the only type supported by
@@ -125,16 +152,20 @@ class Scan(PureOp):
             # type constructor ``typeConstructor``. For anything else we
             # know that even if we run it on the GPU we still construct
             # normal Theano tensors.
+            # We also have to make sure self.outputs[idx] is converted
+            # to the appropriate output type.
             if o.type.dtype in ['float32']:
-                self.output_types.append(
-                    typeConstructor(
+                o_type = typeConstructor(
                         broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
+                        dtype=o.type.dtype)
             else:
-                self.output_types.append(
-                    tensorConstructor(
+                o_type = tensorConstructor(
                         broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
+                        dtype=o.type.dtype)
+
+            self.output_types.append(o_type)
+            self.outputs[idx + j] = format(o, as_type=o_type)
+
         # shared outputs + possibly the ending condition
         for o in outputs[end:]:
             self.output_types.append(o.type)

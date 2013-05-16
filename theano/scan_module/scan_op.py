@@ -267,10 +267,10 @@ class Scan(PureOp):
                     'Please make sure that you use dtypes consistently')
 
         def format(var, as_var):
-            """ This functions ensures that ``out`` has the same dtype as
-            ``inp`` as well as calling filter_variable to make sure they are
-            both TensorType or CudaNdarrayType. It internally deals with the
-            corner case where inp.ndim + 1 = out.ndim
+            """ This functions returns an equivalent to ``var`` with the same
+            dtype as ``as_var``, and the same type class
+            (TensorType or CudaNdarrayType). It internally deals with the
+            corner case where as_var.ndim + 1 == var.ndim
             """
             if not hasattr(var, 'dtype'):
                 return var
@@ -280,6 +280,7 @@ class Scan(PureOp):
             if rval.ndim == as_var.ndim:
                 rval = as_var.type.filter_variable(rval)
             else:
+                assert rval.ndim == as_var.ndim + 1
                 tmp = as_var.type.__class__(
                     broadcastable=tuple(var.broadcastable[:1])+\
                                   tuple(as_var.broadcastable),

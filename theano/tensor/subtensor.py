@@ -1754,7 +1754,7 @@ class AdvancedIncSubtensor1(Op):
 
     def c_support_code(self):
         return """
-        static PyObject * inplace_increment(PyObject *dummy, PyObject *args);
+        extern "C" PyObject * inplace_increment(PyObject *dummy, PyObject *args);
         """
 
     def c_libraries(self):
@@ -1770,12 +1770,17 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc or not self.inplace:
             raise NotImplementedError("")
         return """
+        fprintf(stderr, "pouet1\\n");
         PyObject *arglist = PyTuple_Pack(3,%(x)s, %(idx)s, %(y)s);
         //PyObject *result;  /*Will be PyNone*/
         //result = PyEval_CallObject(inplace_increment, arglist);
+        fprintf(stderr, "pouet2\\n");
         inplace_increment(NULL, arglist);
+        fprintf(stderr, "pouet3\\n");
         Py_XDECREF(%(out)s);
+        fprintf(stderr, "pouet4\\n");
         %(out)s = %(x)s;
+        fprintf(stderr, "pouet5\\n");
         //Py_DECREF(arglist)
         //Py_DECREF(result)
         """ % locals()

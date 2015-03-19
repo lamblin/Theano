@@ -9,6 +9,8 @@ from theano.tensor import as_tensor_variable
 from scikits.cuda import cula
 from theano.sandbox.cuda import cuda_ndarray
 
+dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
+
 try:
     from scikits.cuda import cula
     scikits_cuda_available = True
@@ -72,11 +74,13 @@ class GpuSolve(GpuOp):
             #Solution vectors
             b = inputs[1][0]
 
-            A_cpy = A.copy()
-            b_cpy = b.copy()
-
             #Convert b to F-order from c-order.
-            b_cpy = b_cpy.dimshuffle(1, 0).reshape((b.shape[0], b.shape[1]))
+            b_cpy = dimshuffle(b, (1, 0)).reshape((b.shape[0], b.shape[1]))
+
+            # This copy forces allocation of a new C-contiguous buffer
+            # and returns it.
+            A_cpy = A.copy()
+            b_cpy = b_cpy.copy()
 
             A_pycuda = to_gpuarray(A_cpy)
             b_pycuda = to_gpuarray(b_cpy)
@@ -117,7 +121,9 @@ class GpuSolve(GpuOp):
             A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda, self.trans)
 
             #Convert b to F-order from c-order and assign it to output:
-            z[0] = b_cpy.reshape((b.shape[0], b.shape[1])).dimshuffle(1, 0)
+            b_cpy = b_cpy.reshape(b.shape[::-1])
+            b_cpy = dimshuffle(b_cpy, (1, 0))
+            z[0] = b_cpy
 
         thunk.inputs = inputs
         thunk.outputs = outputs

@@ -490,7 +490,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
 
     # Validate that each xs[i], ys[i] pair represents the same computation
     for i in range(len(xs)):
-        if xs[0].owner:
+        if xs[i].owner:
             # The case where xs and ys don't both have an owner
             # have already been adressed.
             is_equal = compare_nodes(xs[i].owner, ys[i].owner)

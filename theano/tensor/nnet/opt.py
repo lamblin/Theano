@@ -5,8 +5,7 @@ Optimizations addressing the ops in nnet root directory
 import theano
 from theano import compile, gof, tensor
 
-from theano.gof import (local_optimizer, EquilibriumDB, ProxyDB,
-                        Optimizer, TopoOptimizer, toolbox)
+from theano.gof import local_optimizer
 from theano.tensor.nnet import (
     CorrMM, CorrMM_gradInputs, CorrMM_gradWeights)
 from theano.tensor.nnet.blocksparse import (
@@ -113,10 +112,6 @@ abstractconv_groupopt.__name__ = "abstractconv_opts"
 #TODO all below
 register_specialize_device(abstractconv_groupopt, 'gpu', 'fast_compile')
 
-# cuDNN is first, but only registered if cuDNN is available.
-conv_groupopt.register('local_abstractconv_dnn', dnn.local_abstractconv_cudnn, 20,
-                       'conv_dnn',
-                       'gpu', 'fast_compile', 'fast_run', 'cudnn')
 # The GEMM-based convolution comes last to catch all remaining cases.
 # It can be disabled by excluding 'conv_gemm'.
 conv_groupopt.register('local_abstractconv_gemm', local_abstractconv_gemm, 30,

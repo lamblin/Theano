@@ -3,9 +3,9 @@ Optimizations addressing the ops in nnet root directory
 """
 
 import theano
-from theano import compile, gof, tensor
-
+from theano import compile, gof
 from theano.gof import local_optimizer
+
 from theano.tensor.nnet import (
     CorrMM, CorrMM_gradInputs, CorrMM_gradWeights)
 from theano.tensor.nnet.blocksparse import (
@@ -89,7 +89,7 @@ def local_abstractconv_gradweight_gemm(node):
     # need to flip the kernel if necessary
     if node.op.filter_flip:
         rval = rval[:, :, ::-1, ::-1]
-    rval = tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
+    rval = theano.tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
 
     return [rval]
 

@@ -13,7 +13,7 @@ from theano.tensor.nnet.blocksparse import (
     SparseBlockOuter,
     sparse_block_gemv_inplace,
     sparse_block_outer_inplace)
-from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d, AbstractConv2d,
+from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
                                                 AbstractConv2d_gradWeights,
                                                 AbstractConv2d_gradInputs)
 from theano.tensor.opt import register_specialize_device
@@ -63,8 +63,8 @@ def local_abstractconv_gemm(node):
     if not isinstance(node.op, AbstractConv2d):
         return None
     img, kern = node.inputs
-    if (not isinstance(img.type, TensorType) or
-        not isinstance(kern.type, TensorType)):
+    if not isinstance(img.type, TensorType) or \
+       not isinstance(kern.type, TensorType):
         return None
 
     # need to flip the kernel if necessary
@@ -75,13 +75,14 @@ def local_abstractconv_gemm(node):
 
     return [rval]
 
+
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_abstractconv_gradweight_gemm(node):
     if not isinstance(node.op, AbstractConv2d_gradWeights):
         return None
     img, topgrad, shape = node.inputs
-    if (not isinstance(img.type, TensorType) or \
-        not isinstance(topgrad.type, TensorType)):
+    if not isinstance(img.type, TensorType) or \
+       not isinstance(topgrad.type, TensorType):
         return None
 
     rval = CorrMM_gradWeights(border_mode=node.op.border_mode,
@@ -93,19 +94,20 @@ def local_abstractconv_gradweight_gemm(node):
 
     return [rval]
 
+
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_abstractconv_gradinputs_gemm(node):
     if not isinstance(node.op, AbstractConv2d_gradInputs):
         return None
     kern, topgrad, shape = node.inputs
-    if (not isinstance(kern.type, TensorType) or \
-        not isinstance(topgrad.type, TensorType)):
+    if not isinstance(kern.type, TensorType) or \
+       not isinstance(topgrad.type, TensorType):
         return None
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
         kern = kern[:, :, ::-1, ::-1]
-    rval =  CorrMM_gradInputs(border_mode=node.op.border_mode,
+    rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                               subsample=node.op.subsample)(kern, topgrad,
                                                            shape)
 

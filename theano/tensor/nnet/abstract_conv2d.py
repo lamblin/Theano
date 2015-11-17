@@ -4,11 +4,9 @@ Define abstract conv2d interface
 import logging
 
 import theano
-from theano.tensor import (as_tensor_variable, patternbroadcast)
-from theano.tensor import TensorType
+from theano.tensor import as_tensor_variable
 from theano.gof import Apply, Op
 from theano.gof import local_optimizer
-from theano.tensor.opt import register_specialize_device
 
 
 __docformat__ = "restructuredtext en"

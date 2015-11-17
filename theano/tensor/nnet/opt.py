@@ -109,7 +109,7 @@ def local_abstractconv_gradinputs_gemm(node):
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                              subsample=node.op.subsample)(kern, topgrad,
-                                                           shape)
+                                                          shape)
 
     return [rval]
 

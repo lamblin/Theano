@@ -108,7 +108,7 @@ def local_abstractconv_gradinputs_gemm(node):
     if node.op.filter_flip:
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
-                              subsample=node.op.subsample)(kern, topgrad,
+                             subsample=node.op.subsample)(kern, topgrad,
                                                            shape)
 
     return [rval]

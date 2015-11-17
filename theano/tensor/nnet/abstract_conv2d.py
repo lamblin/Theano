@@ -6,7 +6,6 @@ import logging
 import theano
 from theano.tensor import as_tensor_variable
 from theano.gof import Apply, Op
-from theano.gof import local_optimizer
 
 
 __docformat__ = "restructuredtext en"

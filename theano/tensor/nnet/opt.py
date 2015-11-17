@@ -6,7 +6,7 @@ import theano
 from theano import compile, gof
 from theano.gof import local_optimizer
 
-from theano.tensor.nnet import (
+from theano.tensor.nnet.corr import (
     CorrMM, CorrMM_gradInputs, CorrMM_gradWeights)
 from theano.tensor.nnet.blocksparse import (
     SparseBlockGemv,
@@ -20,7 +20,7 @@ from theano.tensor.opt import register_specialize_device
 from theano.tensor import TensorType
 
 # Cpu implementation
-from theano.tensor.nnet import conv2d, ConvOp
+from theano.tensor.nnet.conv import conv2d, ConvOp
 from theano.tensor.nnet.ConvGrad3D import convGrad3D
 from theano.tensor.nnet.ConvTransp3D import convTransp3D
 
@@ -168,7 +168,8 @@ def local_conv2d_gradweight_cpu(node):
         rval = theano.tensor.addbroadcast(rval, 3)
         rval = rval.dimshuffle(0, 4, 1, 2)
         rval = rval[:, :, ::-1, ::-1]
-        rval = patternbroadcast(rval, node.outputs[0].broadcastable)
+        rval = theano.tensor.patternbroadcast(rval,
+                                              node.outputs[0].broadcastable)
         return [rval]
 
     dx, dy = node.op.subsample
@@ -240,7 +241,7 @@ def local_conv2d_gradweight_cpu(node):
         res = res.dimshuffle((1, 0, 2, 3))
         res = res[:, :, ::-1, ::-1]
 
-    res = patternbroadcast(res, node.outputs[0].broadcastable)
+    res = theano.tensor.patternbroadcast(res, node.outputs[0].broadcastable)
     return [res]
 
 
@@ -269,7 +270,8 @@ def local_conv2d_gradinputs_cpu(node):
                             RShape=(shape[0], shape[1], 1))
         rval = theano.tensor.addbroadcast(rval, 3)
         rval = rval.dimshuffle(0, 4, 1, 2)
-        rval = patternbroadcast(rval, node.outputs[0].broadcastable)
+        rval = theano.tensor.patternbroadcast(rval,
+                                              node.outputs[0].broadcastable)
         return [rval]
 
     # Conv2d Implementation
@@ -319,7 +321,7 @@ def local_conv2d_gradinputs_cpu(node):
                  version=-1,
                  direction_hint='bprop inputs')
     din = din(topgrad, filters)
-    din = patternbroadcast(din, node.outputs[0].broadcastable)
+    din = theano.tensor.patternbroadcast(din, node.outputs[0].broadcastable)
     return [din]
 
 

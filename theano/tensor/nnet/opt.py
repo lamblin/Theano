@@ -330,7 +330,7 @@ def local_conv2d_gradinputs_cpu(node):
 # Register Cpu Optmization
 conv_groupopt = theano.gof.optdb.LocalGroupDB()
 conv_groupopt.__name__ = "conv_opts"
-register_specialize_device(conv_groupopt, 'fast_compile')
+register_specialize_device(conv_groupopt, 'fast_compile', 'fast_run')
 
 # GEMM-based convolution
 # It can be disabled by excluding 'conv_gemm'.

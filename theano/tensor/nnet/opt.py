@@ -139,6 +139,8 @@ def local_conv2d_cpu(node):
 
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_conv2d_gradweight_cpu(node):
+    if not isinstance(node.op, AbstractConv2d_gradWeights):
+        return None
 
     img, topgrad, shape = node.inputs
 
@@ -249,6 +251,9 @@ def local_conv2d_gradweight_cpu(node):
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_cpu(node):
+    if not isinstance(node.op, AbstractConv2d_gradInputs):
+        return None
+
     kern, topgrad, shape = node.inputs
 
     if ((not isinstance(kern.type, TensorType) or
